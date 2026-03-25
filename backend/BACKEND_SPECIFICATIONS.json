@@ -1,0 +1,456 @@
+{
+    "backend": {
+        "name": "Timeline Backend",
+        "version": "1.0.0",
+        "description": "Next.js API routes backend for Timeline project management application",
+        "technology": "Next.js 15.4.6, TypeScript, MongoDB (Mongoose), JWT Authentication",
+        "lastUpdated": "2025-08-19",
+        "status": "Production Ready - Active Development",
+        "architecture": "Next.js App Router with API Routes",
+        "deployment": "Docker-ready with multi-environment support"
+    },
+    "authentication": {
+        "methods": [
+            "Email/Password (Traditional)",
+            "Google OAuth 2.0",
+            "GitHub OAuth 2.0"
+        ],
+        "jwt": {
+            "library": "jsonwebtoken 9.0.2",
+            "cookieName": "auth_token",
+            "features": [
+                "Secure HTTP-only cookies",
+                "CSRF protection",
+                "Automatic token validation",
+                "User ID extraction (sub claim)",
+                "Workspace context (ws claim)"
+            ],
+            "security": {
+                "httpOnly": true,
+                "secure": "production only",
+                "sameSite": "Lax",
+                "maxAge": "7 days"
+            }
+        },
+        "oauth": {
+            "providers": {
+                "google": {
+                    "library": "google-auth-library 10.2.1",
+                    "flow": "OAuth 2.0 Authorization Code",
+                    "scopes": [
+                        "openid",
+                        "email",
+                        "profile"
+                    ],
+                    "endpoints": {
+                        "init": "/api/auth/oauth/google/init",
+                        "callback": "/api/auth/oauth/google/callback"
+                    },
+                    "features": [
+                        "State parameter for CSRF protection",
+                        "Nonce for OpenID Connect",
+                        "Automatic user creation",
+                        "Profile picture support",
+                        "OpenID Connect compliance"
+                    ],
+                    "security": {
+                        "stateValidation": true,
+                        "nonceValidation": true,
+                        "secureRedirects": true
+                    }
+                },
+                "github": {
+                    "flow": "OAuth 2.0 Authorization Code",
+                    "scopes": [
+                        "read:user",
+                        "user:email"
+                    ],
+                    "endpoints": {
+                        "init": "/api/auth/oauth/github/init",
+                        "callback": "/api/auth/oauth/github/callback"
+                    },
+                    "features": [
+                        "Email verification",
+                        "Avatar URL support",
+                        "Username fallback for display name",
+                        "Primary email detection"
+                    ],
+                    "security": {
+                        "stateValidation": true,
+                        "secureRedirects": true
+                    }
+                }
+            },
+            "security": [
+                "State parameter validation",
+                "Secure cookie handling",
+                "HTTPS enforcement in production",
+                "CORS protection",
+                "CSRF token validation",
+                "Secure redirect URI validation"
+            ],
+            "testing": {
+                "testEndpoint": "/api/auth/oauth/test",
+                "debugTools": "oauth-test.html",
+                "flowValidation": "Complete OAuth cycle testing"
+            }
+        },
+        "recentFixes": [
+            "Fixed OAuth provider enum validation",
+            "Resolved JWT sub claim undefined issue",
+            "Corrected user object handling in OAuth callbacks",
+            "Fixed import path issues for CORS middleware",
+            "Implemented smart authentication checking to prevent loops"
+        ]
+    },
+    "database": {
+        "orm": "Mongoose 8.17.1",
+        "models": [
+            "User",
+            "Account",
+            "Workspace",
+            "Member",
+            "Role",
+            "Project",
+            "Task"
+        ],
+        "features": [
+            "Automatic indexing",
+            "Performance monitoring",
+            "Connection pooling",
+            "Transaction support",
+            "TypeScript integration",
+            "Schema validation"
+        ],
+        "performance": {
+            "indexing": "Automated index creation scripts",
+            "monitoring": "Query performance tracking",
+            "optimization": "Database performance analysis tools"
+        },
+        "scripts": {
+            "createIndexes": "npm run db:indexes:create",
+            "dropIndexes": "npm run db:indexes:drop",
+            "analyzePerformance": "npm run db:performance"
+        }
+    },
+    "api": {
+        "structure": "Next.js App Router API Routes",
+        "baseUrl": "/api",
+        "versioning": "v1 (implicit)",
+        "documentation": {
+            "swagger": "/api/swagger",
+            "health": "/api/health",
+            "oauthTest": "/api/auth/oauth/test"
+        },
+        "endpoints": {
+            "auth": {
+                "traditional": [
+                    "POST /api/auth/login",
+                    "POST /api/auth/register",
+                    "POST /api/auth/logout",
+                    "GET /api/auth/me"
+                ],
+                "oauth": [
+                    "GET /api/auth/oauth/google/init",
+                    "GET /api/auth/oauth/google/callback",
+                    "GET /api/auth/oauth/github/init",
+                    "GET /api/auth/oauth/github/callback",
+                    "GET /api/auth/oauth/test"
+                ],
+                "verification": [
+                    "POST /api/auth/verify-email",
+                    "POST /api/auth/resend-verification"
+                ]
+            },
+            "workspace": [
+                "GET /api/workspace",
+                "POST /api/workspace",
+                "GET /api/workspace/[workspaceId]",
+                "PUT /api/workspace/[workspaceId]",
+                "DELETE /api/workspace/[workspaceId]"
+            ],
+            "project": [
+                "GET /api/project",
+                "POST /api/project",
+                "GET /api/project/[projectId]",
+                "PUT /api/project/[projectId]",
+                "DELETE /api/project/[projectId]"
+            ],
+            "task": [
+                "GET /api/task",
+                "POST /api/task",
+                "GET /api/task/[taskId]",
+                "PUT /api/task/[taskId]",
+                "DELETE /api/task/[taskId]"
+            ],
+            "user": [
+                "GET /api/user",
+                "GET /api/users",
+                "PUT /api/user/[id]",
+                "DELETE /api/user/[id]"
+            ],
+            "member": [
+                "GET /api/member",
+                "POST /api/member",
+                "PUT /api/member/[id]",
+                "DELETE /api/member/[id]"
+            ],
+            "admin": [
+                "GET /api/admin",
+                "POST /api/admin"
+            ],
+            "ai": [
+                "POST /api/ai/analyze",
+                "POST /api/ai/suggest"
+            ],
+            "health": [
+                "GET /api/health"
+            ]
+        },
+        "middleware": [
+            "CORS handling",
+            "Database connection",
+            "Authentication verification",
+            "Input validation (Zod)",
+            "Rate limiting (planned)",
+            "Request logging (Pino)"
+        ],
+        "errorHandling": {
+            "standardized": true,
+            "logging": "Comprehensive error logging",
+            "userFeedback": "Appropriate error messages",
+            "debugging": "Development-friendly error details"
+        }
+    },
+    "dependencies": {
+        "core": [
+            "next: ^15.4.6",
+            "react: 18.3.0",
+            "typescript: ^5.7.2"
+        ],
+        "database": [
+            "mongoose: ^8.17.1",
+            "ioredis: ^5.7.0"
+        ],
+        "authentication": [
+            "jsonwebtoken: 9.0.2",
+            "bcrypt: ^5.1.1",
+            "google-auth-library: 10.2.1"
+        ],
+        "utilities": [
+            "zod: ^4.0.17",
+            "uuid: ^11.0.3",
+            "nodemailer: 6.10.1",
+            "pino: 9.9.0"
+        ],
+        "development": [
+            "eslint: ^9.33.0",
+            "jest: ^30.0.5",
+            "ts-node: ^10.9.2"
+        ]
+    },
+    "environment": {
+        "required": {
+            "database": [
+                "MONGODB_URI",
+                "JWT_SECRET"
+            ],
+            "oauth": [
+                "GOOGLE_CLIENT_ID",
+                "GOOGLE_CLIENT_SECRET",
+                "GITHUB_CLIENT_ID",
+                "GITHUB_CLIENT_SECRET"
+            ],
+            "app": [
+                "BASE_URL",
+                "FRONTEND_ORIGIN"
+            ]
+        },
+        "optional": [
+            "NODE_ENV",
+            "PORT",
+            "REDIS_URL",
+            "SMTP_HOST",
+            "SMTP_PORT",
+            "SMTP_USER",
+            "SMTP_PASS"
+        ],
+        "development": {
+            "defaults": {
+                "PORT": "8000",
+                "NODE_ENV": "development",
+                "BASE_URL": "http://localhost:8000",
+                "FRONTEND_ORIGIN": "http://localhost:3000"
+            }
+        }
+    },
+    "development": {
+        "scripts": [
+            "npm run dev (Port 8000)",
+            "npm run build",
+            "npm run seed (Database seeding)",
+            "npm run test",
+            "npm run lint",
+            "npm run type-check",
+            "npm run db:performance"
+        ],
+        "features": [
+            "Hot reload with Turbopack",
+            "TypeScript compilation",
+            "ESLint configuration",
+            "Jest testing setup",
+            "Database seeding tools",
+            "Performance monitoring"
+        ],
+        "port": 8000,
+        "hotReload": true,
+        "debugging": {
+            "oauthTest": "oauth-test.html",
+            "logging": "Comprehensive console logging",
+            "errorTracking": "Detailed error information"
+        }
+    },
+    "deployment": {
+        "docker": {
+            "files": [
+                "Dockerfile",
+                "Dockerfile.dev",
+                "docker-compose.yml",
+                "docker-compose.dev.yml"
+            ],
+            "features": [
+                "Multi-stage builds",
+                "Development and production variants",
+                "Environment-specific configurations",
+                "Hot reload support in dev"
+            ]
+        },
+        "scripts": [
+            "deploy.sh (Linux/Mac)",
+            "deploy.bat (Windows)"
+        ],
+        "environments": {
+            "development": "Local with hot reload",
+            "staging": "Docker containerized",
+            "production": "Optimized production build"
+        }
+    },
+    "security": {
+        "features": [
+            "JWT token validation",
+            "CORS protection",
+            "Input validation with Zod",
+            "Password hashing with bcrypt",
+            "Secure cookie handling",
+            "OAuth state parameter validation",
+            "CSRF protection",
+            "Environment variable security"
+        ],
+        "bestPractices": [
+            "Environment variable usage",
+            "No hardcoded secrets",
+            "Input sanitization",
+            "Error message sanitization",
+            "Secure cookie configuration",
+            "HTTPS enforcement in production"
+        ],
+        "oauth": {
+            "stateValidation": true,
+            "secureRedirects": true,
+            "tokenSecurity": "Short-lived access tokens",
+            "scopeLimitation": "Minimal required scopes"
+        }
+    },
+    "monitoring": {
+        "logging": {
+            "library": "Pino 9.9.0",
+            "formatting": "Pretty formatting for development",
+            "output": "JSON format for production",
+            "performance": "High-performance logging"
+        },
+        "health": {
+            "endpoint": "/api/health",
+            "checks": [
+                "Database connectivity",
+                "System status",
+                "API responsiveness"
+            ]
+        },
+        "database": {
+            "performance": "Query timing and optimization",
+            "indexing": "Automated index management",
+            "monitoring": "Connection and query tracking"
+        },
+        "scripts": [
+            "npm run monitor:start",
+            "npm run db:performance"
+        ]
+    },
+    "testing": {
+        "framework": "Jest 30.0.5",
+        "coverage": {
+            "unit": "Component and function testing",
+            "integration": "API endpoint testing",
+            "oauth": "OAuth flow validation"
+        },
+        "tools": {
+            "oauthTest": "oauth-test.html for manual testing",
+            "database": "Seeding and validation scripts",
+            "api": "Endpoint testing utilities"
+        },
+        "scripts": [
+            "npm run test",
+            "npm run test:watch"
+        ]
+    },
+    "recentUpdates": [
+        "Added Google OAuth 2.0 integration",
+        "Added GitHub OAuth 2.0 integration",
+        "Updated ProviderEnum with GOOGLE and GITHUB",
+        "Fixed OAuth callback user handling",
+        "Enhanced authentication error handling",
+        "Added comprehensive OAuth documentation",
+        "Created OAuth testing endpoints",
+        "Improved JWT token generation",
+        "Resolved frontend authentication loops",
+        "Enhanced security with state validation",
+        "Implemented smart auth checking"
+    ],
+    "nextSteps": [
+        "Implement OAuth account linking",
+        "Add refresh token support",
+        "Implement rate limiting",
+        "Add audit logging",
+        "Enhance error monitoring",
+        "Add OAuth provider switching",
+        "Implement multi-factor authentication",
+        "Add API versioning support"
+    ],
+    "systemHealth": {
+        "status": "Excellent",
+        "performance": "Optimized",
+        "security": "Industry-standard",
+        "scalability": "Production-ready",
+        "documentation": "Comprehensive",
+        "testing": "Well-covered",
+        "deployment": "Docker-ready"
+    },
+    "support": {
+        "documentation": [
+            "BACKEND_DASHBOARD_UPDATE.md",
+            "OAUTH_SETUP.md",
+            "STATUS_SUMMARY.md",
+            "API endpoint documentation"
+        ],
+        "testing": [
+            "OAuth test endpoints",
+            "Debug tools",
+            "Performance monitoring"
+        ],
+        "development": [
+            "Hot reload",
+            "TypeScript support",
+            "Comprehensive tooling"
+        ]
+    }
+}

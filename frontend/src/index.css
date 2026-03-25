@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ... */
+html,
+body {
+  height: 100%;
+  font-family: 'DM Sans', serif !important;
+  position: relative;
+}
+
+em-emoji-picker {
+  width: 350px;
+  height: 400px;
+  resize: horizontal;
+  overflow: auto;
+}
+
+/* Custom scrollbar styles */
+.scrollbar {
+  overflow-y: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(176, 174, 174, 0.7) #ddd; /* Firefox */
+  transition: scrollbar-color 0.3s ease, scrollbar-width 0.3s ease;
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 8px; /* Scrollbar width */
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  background: #ddd; /* Track color */
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background-color: gray; /* Thumb color */
+  border-radius: 100%; /* Rounded edges */
+  transition: background-color 0.3s ease; /* Smooth color change */
+}
+
+.scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: darkgray; /* Hover effect */
+}
+
+/* Tour Highlighting Styles */
+.tour-highlight {
+  transition: all 0.3s ease !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 1), 0 0 20px rgba(59, 130, 246, 0.8),
+    0 0 40px rgba(59, 130, 246, 0.4) !important;
+  border-radius: 8px !important;
+  position: relative !important;
+  z-index: 99999 !important;
+  transform: scale(1.05) translateZ(0) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
+  /* Aggressive blur removal */
+  backdrop-filter: none !important;
+  filter: none !important;
+  isolation: isolate !important;
+  will-change: transform, z-index !important;
+  /* Force hardware acceleration and stacking context */
+  transform-style: preserve-3d !important;
+  backface-visibility: hidden !important;
+}
+
+.tour-highlight-active {
+  animation: tour-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tour-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 1),
+      0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.4);
+    transform: scale(1.05) translateZ(0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 1), 0 0 30px rgba(59, 130, 246, 1),
+      0 0 60px rgba(59, 130, 246, 0.6);
+    transform: scale(1.08) translateZ(0);
+  }
+}
+
+/* Enhanced spotlight animations */
+@keyframes spotlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.8),
+      0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3),
+      inset 0 0 20px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.8),
+      0 0 40px rgba(59, 130, 246, 0.8), 0 0 80px rgba(59, 130, 246, 0.4),
+      inset 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+}
+
+@keyframes arrow-bounce {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(5px);
+    opacity: 1;
+  }
+}
+
+@keyframes arrow-bounce-left {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(-5px);
+    opacity: 1;
+  }
+}
+
+/* Complete blur removal when sidebar is highlighted */
+.sidebar-highlighting-active {
+  backdrop-filter: none !important;
+  filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  -webkit-filter: none !important;
+  -moz-backdrop-filter: none !important;
+  -moz-filter: none !important;
+}
+
+.sidebar-highlighting-active * {
+  backdrop-filter: none !important;
+  filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  -webkit-filter: none !important;
+  -moz-backdrop-filter: none !important;
+  -moz-filter: none !important;
+}
+
+/* CSS variables are defined in globals.css to avoid conflicts */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  button[data-placeholder] {
+    @apply text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  /* Safe area padding for mobile devices */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

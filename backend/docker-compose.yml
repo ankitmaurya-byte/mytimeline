@@ -1,0 +1,59 @@
+# Production compose (Atlas + optional external Redis).
+# This only runs the API container; MongoDB is managed (Atlas). Add Redis here only if you self-host it.
+
+services:
+  api:
+    # For CI-driven releases prefer: image: yourrepo/timeline-backend:<tag>
+    # Keeping build here for now; replace with image once you push to a registry.
+    build:
+      context: .
+      platform: linux/amd64
+      cache_from:
+        - timeline-backend:cache
+      cache_to:
+        - timeline-backend:cache
+    container_name: timeline-backend-prod
+    env_file:
+      - env.example
+    environment:
+      # Ensure PORT aligns with Dockerfile default (8000) or override if desired.
+      PORT: 8000
+      NODE_ENV: production
+      # SECURITY: MONGO_URI should ideally live ONLY in the env file / secret store.
+      # If using Atlas, confirm it includes the database name, e.g. timelineDB.
+      # Example (uncomment & adjust) if you are NOT using the env file:
+      # MONGO_URI: mongodb+srv://<user>:<pass>@cluster.mongodb.net/timelineDB?retryWrites=true&w=majority
+    ports:
+      - '8000:8000'
+    restart: unless-stopped
+    # Lightweight healthcheck using Node (no curl/wget needed in final image)
+    healthcheck:
+      test: [
+          'CMD-SHELL',
+          'node -e "const http=require(''http'');const
+          p=process.env.PORT||8000;http.get(''http://localhost:''+p+''/api/health'',r=>{if(r.statusCode!==200)process.exit(1);}).on(''error'',()=>process.exit(1));"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # If you later add an internal Redis container, define a network and set REDIS_URL accordingly.
+    # Example:
+    # depends_on:
+    #   redis:
+    #     condition: service_healthy
+# Optional self‑hosted Redis example (commented out)
+#  redis:
+#    image: redis:7-alpine
+#    restart: unless-stopped
+#    command: ["redis-server", "--appendonly", "no"]
+#    expose:
+#      - "6379"
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "PING"]
+#      interval: 30s
+#      timeout: 5s
+#      retries: 5
+# After enabling redis service, add network + REDIS_URL=redis://redis:6379 in api.
+
+# No volumes required unless you add local persistence services.

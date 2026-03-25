@@ -1,0 +1,53 @@
+{
+    "buildCommand": "npm run build",
+    "outputDirectory": ".next",
+    "installCommand": "npm install",
+    "framework": "nextjs",
+    "build": {
+        "env": {
+            "POSTCSS_CONFIG": "postcss.config.js",
+            "NODE_ENV": "production"
+        }
+    },
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Credentials",
+                    "value": "true"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Cookie, Auth-Token"
+                },
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "https://api.timelline.tech"
+                }
+            ]
+        },
+        {
+            "source": "/_next/static/css/(.*)",
+            "headers": [
+                {
+                    "key": "Content-Type",
+                    "value": "text/css"
+                }
+            ]
+        },
+        {
+            "source": "/_next/static/js/(.*)",
+            "headers": [
+                {
+                    "key": "Content-Type",
+                    "value": "application/javascript"
+                }
+            ]
+        }
+    ]
+}

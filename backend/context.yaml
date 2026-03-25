@@ -1,0 +1,630 @@
+app:
+  name: Timeline Backend
+  description: >
+    Next.js 14 App Router backend (TypeScript, Mongoose). Provides all REST
+    API routes for auth, workspaces, projects, tasks, members, analytics,
+    AI chat, admin, and WebSocket proxying. A Go binary handles real-time
+    WebSocket connections; server.ts proxies /ws to it.
+  framework: "Next.js 14 (App Router, TypeScript)"
+  database: "MongoDB via Mongoose ODM"
+  websocket: "Go binary (/backend/websocket-server) on WS_PORT=8001"
+
+structure:
+  folders:
+    - "app/api/: all REST route handlers (Next.js route.ts files)"
+    - "app/api/_lib/: shared per-request utilities"
+    - "src/models/: Mongoose schema + model definitions"
+    - "src/services/: business logic (no direct HTTP)"
+    - "src/middleware/: auth middleware helpers"
+    - "src/utils/: bcrypt, jwt, uuid, lru-cache, appError"
+    - "src/config/: app/db/env/http/swagger config"
+    - "src/enums/: TaskStatus, TaskPriority, Roles, AccountProvider"
+    - "src/validation/: request validators (Zod)"
+    - "src/seeders/: DB seed scripts"
+    - "src/api-lib/: rate-limit, AI rate-limit, cache, logger, error wrappers"
+    - "websocket/: Go WebSocket server source code"
+    - "__tests__/: Jest test suites"
+
+entry_point:
+  file: src/server.ts
+  description: >
+    Creates HTTP server wrapping Next.js. HTTP → Next.js handle().
+    WebSocket upgrade on /ws → http-proxy → Go binary on WS_PORT.
+  key_functions:
+    - "app.prepare(): initialises Next.js"
+    - "server.on('upgrade'): proxies /ws WebSocket to Go"
+    - "proxy.on('error'): gracefully closes broken WS sockets"
+
+api_lib:
+  - name: auth.ts
+    path: app/api/_lib/auth.ts
+    exports:
+      - name: getDbUserFromRequest
+        signature: "(req: NextRequest) => Promise<UserDocument|null>"
+        logic: >
+          Checks x-user-id header (dev override), then auth_token cookie,
+          then Authorization Bearer header. Verifies JWT via verifyJwt(),
+          loads user from MongoDB by decoded.sub.
+        called_by: [authenticateToken, all protected route handlers]
+
+  - name: db.ts
+    path: app/api/_lib/db.ts
+    exports:
+      - name: ensureDb
+        signature: "() => Promise<void>"
+        logic: "Connects Mongoose to MONGODB_URI if not already connected"
+        called_by: [every API route handler at top of function]
+
+  - name: cors.ts
+    path: app/api/_lib/cors.ts
+    exports:
+      - name: withCORS
+        signature: "(handler) => wrappedHandler"
+        logic: "Adds Access-Control-* headers; handles OPTIONS preflight"
+        called_by: [every route.ts file — wraps POST/GET exports]
+
+  - name: rate-limit.ts
+    path: app/api/_lib/rate-limit.ts
+    exports:
+      - name: rateLimit
+        logic: "Token-bucket per IP, 100 req/min default"
+        called_by: [auth routes]
+
+  - name: logger.ts
+    path: src/api-lib/logger.ts
+    exports: [logger.info, logger.error, logger.warn]
+    library: pino
+    called_by: [server.ts, services]
+
+middleware:
+  - name: authenticateToken
+    file: src/middleware/auth.ts
+    signature: "(request: NextRequest) => Promise<AuthResult>"
+    logic: "Calls getDbUserFromRequest(); returns {success, userId}"
+    called_by: [Most protected route handlers]
+
+  - name: requireAuth
+    file: src/middleware/auth.ts
+    logic: "Calls authenticateToken(); passthrough if success"
+    called_by: [workspace/project/task routes]
+
+  - name: adminAuth
+    file: src/middleware/admin-auth.ts
+    logic: "Verifies user.isAdmin === true; 403 otherwise"
+    called_by: [/api/admin/* routes]
+
+  - name: universalAuth
+    file: src/middleware/universal-auth.ts
+    logic: "Supports both cookie and Bearer, used for mixed contexts"
+    called_by: [AI, misc routes]
+
+  - name: aiRateLimit
+    file: src/api-lib/ai-rate-limit.ts
+    logic: "Stricter token bucket: 10 req/min per user for AI endpoints"
+    called_by: [/api/ai/chat]
+
+models:
+  - name: UserModel
+    file: src/models/user.model.ts
+    collection: users
+    fields:
+      name: String
+      email: "String (unique, lowercase, required)"
+      password: "String (select:true, bcrypt pre-save)"
+      profilePicture: "String|null"
+      currentWorkspace: "ObjectId → Workspace"
+      isAdmin: "Boolean (false)"
+      superAdmin: "Boolean (false)"
+      emailVerified: "Date|null"
+      emailVerificationToken: String
+      emailVerificationTokenExpires: Date
+      isActive: "Boolean (true)"
+      lastLogin: "Date|null"
+      lastSeen: "Date|null"
+      biometricSessions: "BiometricSession[] (embedded)"
+      rememberMeSessions: "RememberMeSession[] (embedded)"
+    instance_methods:
+      - "omitPassword(): deletes password from toObject() result"
+      - "comparePassword(val): bcrypt.compare(val, this.password)"
+    hooks:
+      - "pre('save'): if password modified → hashValue(password)"
+    indexes:
+      - "email (unique)"
+      - "currentWorkspace, isActive, isAdmin"
+      - "emailVerificationToken (sparse)"
+      - "biometricSessions.deviceId"
+      - "rememberMeSessions.tokenId (unique sparse), .deviceId, .expiresAt"
+
+  - name: WorkspaceModel
+    file: src/models/workspace.model.ts
+    collection: workspaces
+    fields:
+      name: "String (required)"
+      description: String
+      owner: "ObjectId → User (required)"
+      inviteCode: "String (unique, default: generateInviteCode())"
+      dismissedUsers: "DismissedUser[] (embedded)"
+    instance_methods:
+      - "resetInviteCode(): this.inviteCode = generateInviteCode()"
+    indexes:
+      - "owner, createdAt desc"
+      - "dismissedUsers.userId, dismissedUsers.dismissedAt"
+
+  - name: ProjectModel
+    file: src/models/project.model.ts
+    collection: projects
+    fields:
+      name: "String (required)"
+      emoji: "String (default: 📊)"
+      description: "String|null"
+      workspace: "ObjectId → Workspace"
+      createdBy: "ObjectId → User"
+    indexes:
+      - "workspace, createdBy"
+      - "workspace+createdAt desc, workspace+name"
+      - "name+description (text)"
+      - "updatedAt desc"
+
+  - name: TaskModel
+    file: src/models/task.model.ts
+    collection: tasks
+    fields:
+      taskCode: "String (unique, auto: generateTaskCode())"
+      title: "String (required)"
+      description: "String|null"
+      project: "ObjectId → Project"
+      workspace: "ObjectId → Workspace"
+      status: "BACKLOG|TODO|IN_PROGRESS|IN_REVIEW|DONE (default: TODO)"
+      priority: "LOW|MEDIUM|HIGH (default: MEDIUM)"
+      assignedTo: "ObjectId → User|null"
+      createdBy: "ObjectId → User"
+      dueDate: "Date|null"
+    indexes:
+      - "workspace+project+createdAt desc"
+      - "workspace+status+createdAt desc"
+      - "workspace+assignedTo+status"
+      - "workspace+priority+createdAt desc"
+      - "workspace+dueDate+status"
+      - "project+status+createdAt desc"
+      - "assignedTo+status+dueDate"
+      - "title+description (text)"
+
+  - name: MemberModel
+    file: src/models/member.model.ts
+    collection: members
+    fields:
+      userId: "ObjectId → User"
+      workspaceId: "ObjectId → Workspace"
+      role: "ObjectId → Role"
+      joinedAt: "Date (default: now)"
+    indexes:
+      - "userId, workspaceId"
+      - "userId+workspaceId (unique composite)"
+      - "workspaceId+joinedAt desc"
+
+  - name: RoleModel
+    file: src/models/roles-permission.model.ts
+    collection: roles
+    fields:
+      name: "OWNER|ADMIN|MEMBER"
+      permissions: "String[]"
+
+  - name: AccountModel
+    file: src/models/account.model.ts
+    collection: accounts
+    fields:
+      userId: "ObjectId → User"
+      provider: "EMAIL|GOOGLE|GITHUB"
+      providerId: String
+
+  - name: InsightsNoteModel
+    file: src/models/insights-note.model.ts
+    collection: insightsnotes
+    fields:
+      workspace: "ObjectId → Workspace"
+      content: String
+      createdBy: "ObjectId → User"
+
+services:
+  - name: auth.service
+    file: src/services/auth.service.ts
+    functions:
+      - name: loginOrCreateAccountService
+        params: "{provider, displayName, providerId, picture?, email?}"
+        logic: >
+          MongoDB session/transaction. Finds user by email; if missing creates
+          User + Account. If exists, updates name/picture, links new OAuth
+          account. Sets emailVerified for OAuth users. Returns {user}.
+        called_by: [OAuth callback route handlers]
+
+      - name: registerUserService
+        params: "{email, name, password}"
+        logic: >
+          Checks email uniqueness. Creates User with bcrypt-ready password
+          + emailVerificationToken (hex, 15min TTL). Creates Account record.
+          Returns {userId, emailVerificationToken}.
+        called_by: [POST /api/auth/register]
+
+      - name: verifyUserService
+        params: "{email, password, provider?}"
+        logic: >
+          Finds Account by provider+providerId. Loads User by account.userId.
+          Calls user.comparePassword(). Returns user.omitPassword().
+        called_by: [POST /api/auth/login]
+
+  - name: workspace.service
+    file: src/services/workspace.service.ts
+    functions:
+      - name: createWorkspaceService
+        params: "(userId, {name, description?})"
+        logic: >
+          Finds user. Finds OWNER role. Creates Workspace. Creates Member
+          (owner). Sets user.currentWorkspace. Calls
+          createDefaultProjectForWorkspace(). Returns {workspace}.
+        called_by: [PUT /api/workspace]
+
+      - name: getAllWorkspacesUserIsMemberService
+        params: "(userId)"
+        logic: >
+          Finds all Member docs for userId, populates workspaceId,
+          sorts by createdAt desc. Returns {workspaces}.
+        called_by: [GET /api/workspace]
+
+      - name: getWorkspaceByIdService
+        params: "(workspaceId)"
+        logic: >
+          Finds workspace. Finds members with populated role. Returns
+          {workspace: {...workspace, members}}.
+        called_by: [GET /api/workspace/:id]
+
+      - name: getWorkspaceByInviteCodeService
+        params: "(inviteCode)"
+        logic: "Finds workspace by inviteCode. Loads owner user. Returns {workspace, owner}."
+        called_by: [GET /api/workspace/invite/:code]
+
+      - name: getWorkspaceMembersService
+        params: "(workspaceId)"
+        logic: >
+          Finds all Members, populates userId (name/email/lastSeen/profilePicture)
+          and role (name/permissions). Filters null userId. Returns {members, roles}.
+        called_by: [GET /api/workspace/:id/members]
+
+      - name: getWorkspaceAnalyticsService
+        params: "(workspaceId)"
+        logic: >
+          Checks LRU cache (5s TTL). Counts totalTasks, overdueTasks,
+          completedTasks via countDocuments. Caches and returns {analytics}.
+        called_by: [GET /api/workspace/:id/analytics]
+
+      - name: changeMemberRoleService
+        params: "(workspaceId, memberId, roleId)"
+        logic: "Finds member by userId+workspaceId. Sets member.role = role. Saves."
+        called_by: [POST /api/workspace/:id/members/:memberId]
+
+      - name: updateWorkspaceByIdService
+        params: "(workspaceId, name, description?)"
+        logic: "Finds workspace. Updates name/description. Saves. Returns {workspace}."
+        called_by: [PUT /api/workspace/:id]
+
+      - name: deleteWorkspaceService
+        params: "(workspaceId, userId)"
+        logic: >
+          MongoDB transaction: verifies owner. Deletes Projects, Tasks,
+          InsightsNotes, Members. Updates user.currentWorkspace to next
+          available. Deletes workspace. Returns {currentWorkspace}.
+        called_by: [DELETE /api/workspace/:id]
+
+  - name: project.service
+    file: src/services/project.service.ts
+    functions:
+      - name: createProjectService
+        params: "(userId, workspaceId, {emoji?, name, description?})"
+        logic: "Creates ProjectModel. Saves. Returns {project}."
+        called_by: [POST /api/workspace/:id/projects]
+
+      - name: getProjectsInWorkspaceService
+        params: "(workspaceId, pageSize, pageNumber)"
+        logic: "Counts + paginates ProjectModel.find({workspace}). Populates createdBy."
+        called_by: [GET /api/workspace/:id/projects]
+
+      - name: getProjectByIdAndWorkspaceIdService
+        params: "(workspaceId, projectId)"
+        logic: "Finds project by _id+workspace. Selects id/emoji/name/description."
+        called_by: [GET /api/workspace/:id/projects/:pid]
+
+      - name: getProjectAnalyticsService
+        params: "(workspaceId, projectId)"
+        logic: >
+          Mongoose $facet aggregate: totalTasks, overdueTasks (dueDate<now, status!=DONE),
+          completedTasks (status=DONE). Returns {analytics}.
+        called_by: [GET /api/workspace/:id/projects/:pid/analytics]
+
+      - name: updateProjectService
+        params: "(workspaceId, projectId, {emoji?, name, description?})"
+        logic: "Finds project. Updates fields. Saves. Returns {project}."
+        called_by: [PUT /api/workspace/:id/projects/:pid]
+
+      - name: deleteProjectService
+        params: "(workspaceId, projectId)"
+        logic: "Finds project. deleteOne(). TaskModel.deleteMany({project}). Returns project."
+        called_by: [DELETE /api/workspace/:id/projects/:pid]
+
+  - name: task.service
+    file: src/services/task.service.ts
+    functions:
+      - name: createTaskService
+        params: "(workspaceId, projectId, userId, {title, description?, priority, status, assignedTo?, dueDate?})"
+        logic: >
+          Validates project belongs to workspace. Validates assignedTo is a member.
+          Creates TaskModel. Saves. Returns {task}.
+        called_by: [POST .../tasks]
+
+      - name: updateTaskService
+        params: "(workspaceId, projectId, taskId, body)"
+        logic: "Validates project+task ownership. findByIdAndUpdate(). Returns {updatedTask}."
+        called_by: [PUT .../tasks/:id]
+
+      - name: getAllTasksService
+        params: "(workspaceId, filters, pagination, sorting?)"
+        logic: >
+          Builds Mongoose query: workspace match, optional project/status/priority/
+          assignedTo/$text/$regex/dueDate/dateRange filters. Paginates with skip+limit.
+          Sorts by field+direction. Populates assignedTo (name) + project (emoji/name).
+          Returns {tasks, pagination}.
+        called_by: [GET .../tasks, AI chat]
+
+      - name: getRecentTasksService
+        params: "(workspaceId, pagination)"
+        logic: "Simple find workspace tasks sorted by createdAt desc. Paginated."
+        called_by: [GET /api/workspace/:id/tasks]
+
+      - name: getTaskByIdService
+        params: "(workspaceId, projectId, taskId)"
+        logic: "Validates project. findOne({_id, workspace, project}). Populates assignedTo."
+        called_by: [GET .../tasks/:id]
+
+      - name: deleteTaskService
+        params: "(workspaceId, taskId)"
+        logic: "findOneAndDelete({_id, workspace}). Returns void."
+        called_by: [DELETE .../tasks/:id]
+
+  - name: member.service
+    file: src/services/member.service.ts
+    functions:
+      - name: getMemberRoleInWorkspace
+        params: "(userId, workspaceId)"
+        logic: >
+          Validates input IDs. Finds workspace. Finds Member with populated role.
+          If not found but user.isAdmin → auto-creates membership with OWNER role.
+          Returns {role: string}.
+        called_by: [All workspace/project/task routes for permission check]
+
+      - name: joinWorkspaceByInviteService
+        params: "(userId, inviteCode)"
+        logic: >
+          findOne workspace by inviteCode. Checks not already member.
+          Finds MEMBER role. Creates MemberModel. Returns {workspaceId, role}.
+        called_by: [POST /api/workspace/:id/join]
+
+  - name: ai/task-nlp.service
+    file: src/services/ai/task-nlp.service.ts
+    functions:
+      - name: parseTaskQuery
+        params: "(input: string) => ParsedTaskQuery"
+        logic: >
+          Regex-based NLP: detects intent (today/tomorrow/overdue/week/assigned/
+          status/priority/unknown). Computes dateRange for temporal intents.
+        called_by: [AI chat route]
+
+      - name: executeParsedTaskQuery
+        params: "(workspaceId, userId, parsed: ParsedTaskQuery)"
+        logic: "Maps ParsedTaskQuery to getAllTasksService filters. Returns tasks[]."
+        called_by: [AI chat route]
+
+      - name: summarizeTasks
+        params: "(intent, tasks[], opts?)"
+        logic: >
+          Counts by status/priority, computes overdue/today/week counts.
+          Returns human-readable string in style: short|detailed|friendly.
+        called_by: [AI chat route]
+
+  - name: ai/llm.service
+    file: src/services/ai/llm.service.ts
+    purpose: "Wraps external LLM API call for enhanced AI responses"
+    called_by: [AI chat route when NLP result is insufficient]
+
+  - name: cache.service
+    file: src/services/cache.service.ts
+    purpose: "Wraps LRU cache with get/set/del helpers"
+    used_by: [workspace analytics, performance-sensitive routes]
+
+  - name: cloudinary.service
+    file: src/services/cloudinary.service.ts
+    purpose: "Upload profile picture to Cloudinary, return secure_url"
+    called_by: [POST /api/auth/profile-picture]
+
+  - name: email.service
+    file: src/services/email.service.ts
+    purpose: "Sends verification and transactional emails via SMTP/nodemailer"
+    called_by: [registerUserService, resend-verification route]
+
+  - name: biometric-auth.service
+    file: src/services/biometric-auth.service.ts
+    functions:
+      - name: registerBiometricCredential
+        logic: "Validates WebAuthn credential. Pushes to user.biometricSessions[]. Saves."
+      - name: verifyBiometricLogin
+        logic: "Finds matching biometricSession by deviceId. Verifies credential. Returns user."
+    called_by: [/api/auth/biometric/* routes]
+
+  - name: remember-me.service
+    file: src/services/remember-me.service.ts
+    purpose: "Creates/validates long-lived sessions in user.rememberMeSessions[]"
+    called_by: [/api/auth/remember-me route]
+
+  - name: default-project.service
+    file: src/services/default-project.service.ts
+    exports:
+      - name: createDefaultProjectForWorkspace
+        logic: "Creates a starter project with sample tasks for new workspaces"
+        called_by: [createWorkspaceService]
+
+  - name: admin-metrics.service
+    file: src/services/admin-metrics.service.ts
+    purpose: "Platform-wide aggregates: total users, workspaces, tasks, active users"
+    called_by: [GET /api/admin/metrics]
+
+  - name: admin-user-management.service
+    file: src/services/admin-user-management.service.ts
+    purpose: "List/search/ban users for admin panel"
+    called_by: [GET|POST /api/admin/users]
+
+  - name: onlineStatus.service
+    file: src/services/onlineStatus.service.ts
+    purpose: "Updates user.lastSeen; reads online presence for workspace members"
+    called_by: [GET /api/workspace/online-status, WebSocket events]
+
+  - name: performance.service
+    file: src/services/performance.service.ts
+    purpose: "Tracks and returns API latency metrics for admin monitoring"
+
+api_routes:
+  auth:
+    - "POST /api/auth/register → registerUserService → email verification sent"
+    - "POST /api/auth/login → verifyUserService → signJwt → HttpOnly cookie"
+    - "POST /api/auth/logout → clear auth_token + auth_active cookies"
+    - "GET  /api/auth/me → getDbUserFromRequest → return user JSON"
+    - "GET  /api/auth/verify-email?token= → set emailVerified"
+    - "POST /api/auth/resend-verification → new token + email"
+    - "DELETE /api/auth/delete-account → cascade delete"
+    - "PUT  /api/auth/profile-picture → Cloudinary upload"
+    - "GET  /api/auth/oauth/google/init → redirect to Google"
+    - "GET  /api/auth/oauth/google/callback → loginOrCreateAccountService"
+    - "GET  /api/auth/oauth/github/init → redirect to GitHub"
+    - "GET  /api/auth/oauth/github/callback → loginOrCreateAccountService"
+    - "POST /api/auth/biometric/register → registerBiometricCredential"
+    - "POST /api/auth/biometric/login → verifyBiometricLogin → JWT"
+    - "POST /api/auth/remember-me → createRememberMeSession"
+
+  workspace:
+    - "GET  /api/workspace → getAllWorkspacesUserIsMemberService"
+    - "PUT  /api/workspace → createWorkspaceService"
+    - "GET  /api/workspace/:id → getWorkspaceByIdService"
+    - "PUT  /api/workspace/:id → updateWorkspaceByIdService"
+    - "DELETE /api/workspace/:id → deleteWorkspaceService"
+    - "GET  /api/workspace/:id/analytics → getWorkspaceAnalyticsService"
+    - "GET  /api/workspace/:id/members → getWorkspaceMembersService"
+    - "POST /api/workspace/:id/members/:memberId → changeMemberRoleService"
+    - "POST /api/workspace/:id/join → joinWorkspaceByInviteService"
+    - "GET  /api/workspace/online-status → onlineStatus.service"
+
+  project:
+    - "GET  /api/workspace/:id/projects → getProjectsInWorkspaceService"
+    - "POST /api/workspace/:id/projects → createProjectService"
+    - "GET  /api/workspace/:id/projects/:pid → getProjectByIdAndWorkspaceIdService"
+    - "PUT  /api/workspace/:id/projects/:pid → updateProjectService"
+    - "DELETE /api/workspace/:id/projects/:pid → deleteProjectService"
+    - "GET  /api/workspace/:id/projects/:pid/analytics → getProjectAnalyticsService"
+
+  task:
+    - "GET  /api/workspace/:id/projects/:pid/tasks → getAllTasksService (filters+pagination)"
+    - "POST /api/workspace/:id/projects/:pid/tasks → createTaskService"
+    - "GET  /api/workspace/:id/projects/:pid/tasks/:tid → getTaskByIdService"
+    - "PUT  /api/workspace/:id/projects/:pid/tasks/:tid → updateTaskService"
+    - "DELETE /api/workspace/:id/projects/:pid/tasks/:tid → deleteTaskService"
+    - "GET  /api/workspace/:id/tasks → getRecentTasksService (all workspace tasks)"
+
+  ai:
+    - "POST /api/ai/chat → parseTaskQuery → executeParsedTaskQuery → summarizeTasks"
+    - "GET  /api/ai/status → AI feature availability flag"
+
+  admin:
+    - "GET  /api/admin/users → admin-user-management.service list"
+    - "POST /api/admin/users → ban/update user"
+    - "GET  /api/admin/metrics → admin-metrics.service"
+    - "GET  /api/admin/analytics → aggregate charts"
+    - "GET  /api/admin/dashboard → admin dashboard data"
+    - "POST /api/admin/cleanup → cleanup expired sessions"
+
+  misc:
+    - "GET /api/health → {status, db}"
+    - "GET /api/docs → Swagger JSON"
+    - "GET /api/docs/ui → Swagger UI"
+    - "POST /api/seed/roles → seed OWNER/ADMIN/MEMBER roles"
+    - "GET /api/events → Server-Sent Events stream"
+
+websocket:
+  binary: backend/websocket-server (Go)
+  source: backend/websocket/
+  port: 8001 (WS_PORT env)
+  proxy: "backend/src/server.ts: server.on('upgrade') → http-proxy.ws()"
+  purpose: "Real-time member online/offline presence"
+  client: "frontend/src/hooks/use-websocket-online-status.ts"
+
+utils:
+  - "src/utils/jwt.ts: signJwt(), verifyJwt(), buildAuthCookie(), buildJsAccessibleAuthCookie()"
+  - "src/utils/bcrypt.ts: hashValue(), compareValue()"
+  - "src/utils/uuid.ts: generateInviteCode(), generateTaskCode()"
+  - "src/utils/lru-cache.ts: globalCache LRU instance"
+  - "src/utils/appError.ts: BadRequestException, NotFoundException, UnauthorizedException"
+
+config:
+  - "src/config/database.config.ts: MONGODB_URI, connect options"
+  - "src/config/env.config.ts: validated env vars (PORT, JWT_SECRET, etc.)"
+  - "src/config/http.config.ts: HTTPSTATUS enum (OK=200, BAD_REQUEST=400, etc.)"
+  - "src/config/app.config.ts: APP_ORIGIN, FRONTEND_URL, NODE_ENV"
+  - "src/config/swagger.config.ts: OpenAPI spec builder"
+
+enums:
+  TaskStatus: [BACKLOG, TODO, IN_PROGRESS, IN_REVIEW, DONE]
+  TaskPriority: [LOW, MEDIUM, HIGH]
+  Roles: [OWNER, ADMIN, MEMBER]
+  AccountProvider: [EMAIL, GOOGLE, GITHUB]
+  ErrorCode: [ACCESS_UNAUTHORIZED, WORKSPACE_NOT_FOUND, ...]
+
+performance:
+  caching:
+    - "workspace analytics: LRU 5s TTL via globalCache"
+    - "React Query server-side: staleTime config in client"
+  indexes:
+    - "All models have compound indexes matching common query patterns"
+    - "Text indexes on title+description for task search"
+    - "Sparse indexes on optional unique fields (emailVerificationToken)"
+  bottlenecks:
+    - "getAllTasksService with large workspaces → rely on compound indexes"
+    - "getWorkspaceMembersService → populates two refs; optimize with lean()"
+
+developer_guide:
+  how_to_add_api_route:
+    - "1. Create app/api/<path>/route.ts"
+    - "2. Call ensureDb() at top"
+    - "3. Call getDbUserFromRequest() for auth"
+    - "4. Call getMemberRoleInWorkspace() for permission"
+    - "5. Call service function"
+    - "6. Return new Response(JSON.stringify(data), {status: 200})"
+    - "7. Wrap export with withCORS()"
+
+  how_to_add_service_function:
+    - "1. Add function to relevant service in src/services/"
+    - "2. Use Mongoose models directly"
+    - "3. Throw appError exceptions (BadRequestException etc.) on errors"
+    - "4. Use MongoDB sessions for multi-document transactions"
+
+  how_to_add_model:
+    - "1. Create src/models/<name>.model.ts"
+    - "2. Define interface extending Document"
+    - "3. Create Schema with indexes"
+    - "4. Export model with mongoose.models check"
+    - "5. Import in src/models/index.ts"
+
+  how_to_debug:
+    - "Check pino logger output in terminal (src/api-lib/logger.ts)"
+    - "Use /api/health to confirm DB connection"
+    - "Use /api/debug/auth-test to verify JWT flow"
+    - "Check /api/docs for OpenAPI spec"
+    - "Run jest tests: npm test or npm run test:ci"
+
+  seeding:
+    - "POST /api/seed/roles → seeds OWNER, ADMIN, MEMBER roles"
+    - "Run src/seeders/role.seeder.ts for initial setup"
+    - "src/seeders/default-project.seeder.ts → sample project template"

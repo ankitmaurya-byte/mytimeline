@@ -1,0 +1,32 @@
+##########
+# Timeline Backend - Development Dockerfile
+# Usage: docker build -f Dockerfile.dev -t timeline-backend-dev .
+# Then:  docker run --env-file .env.example -p 8000:8000 -v %cd%:/app timeline-backend-dev
+# (On PowerShell replace %cd% appropriately; on Linux/mac use: -v "$(pwd)":/app)
+##########
+
+ARG NODE_VERSION=20-alpine
+FROM node:${NODE_VERSION} AS dev
+
+# Install OS packages you might need for builds (add more as needed)
+RUN apk add --no-cache libc6-compat bash curl
+
+WORKDIR /app
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=8000 \
+    CHOKIDAR_USEPOLLING=true \
+    CHOKIDAR_INTERVAL=800
+
+# Only copy dependency manifests first (better layer caching)
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+# Copy the rest of the source
+COPY . .
+
+# Expose port
+EXPOSE 8000
+
+# For hot reload we run "next dev" (turbopack disabled here unless you want it)
+CMD ["npm", "run", "dev"]

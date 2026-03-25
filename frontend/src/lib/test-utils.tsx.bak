@@ -1,0 +1,178 @@
+import React, { ReactElement } from 'react'
+import { render, RenderOptions } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+// Create a fresh QueryClient for each test
+const createTestQueryClient = () =>
+    new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+                staleTime: Infinity,
+                gcTime: Infinity,
+            },
+            mutations: {
+                retry: false,
+            },
+        },
+    })
+
+// Custom render function that includes providers
+interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+    queryClient?: QueryClient
+}
+
+const customRender = (
+    ui: ReactElement,
+    options: CustomRenderOptions = {}
+) => {
+    const { queryClient = createTestQueryClient(), ...renderOptions } = options
+
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={queryClient}>
+            {children}
+        </QueryClientProvider>
+    )
+
+    return {
+        ...render(ui, { wrapper: Wrapper, ...renderOptions }),
+        queryClient,
+    }
+}
+
+// Re-export everything
+export * from '@testing-library/react'
+
+// Override render method
+export { customRender as render }
+
+// Test data factories
+export const createMockUser = (overrides = {}) => ({
+    id: 'test-user-id',
+    email: 'test@example.com',
+    firstName: 'Test',
+    lastName: 'User',
+    profilePicture: null,
+    ...overrides,
+})
+
+export const createMockWorkspace = (overrides = {}) => ({
+    id: 'test-workspace-id',
+    name: 'Test Workspace',
+    description: 'A test workspace',
+    owner: 'test-user-id',
+    inviteCode: 'TEST123',
+    ...overrides,
+})
+
+export const createMockProject = (overrides = {}) => ({
+    id: 'test-project-id',
+    name: 'Test Project',
+    emoji: '🚀',
+    description: 'A test project',
+    workspace: 'test-workspace-id',
+    ...overrides,
+})
+
+export const createMockTask = (overrides = {}) => ({
+    id: 'test-task-id',
+    title: 'Test Task',
+    description: 'A test task description',
+    status: 'pending',
+    priority: 'medium',
+    workspace: 'test-workspace-id',
+    project: 'test-project-id',
+    assignee: 'test-user-id',
+    dueDate: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+})
+
+// Mock API responses
+export const mockApiResponse = (data: any, status = 200) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => data,
+    text: async () => JSON.stringify(data),
+})
+
+// Mock fetch
+export const mockFetch = (response: any, status = 200) => {
+    global.fetch = vi.fn().mockResolvedValue(mockApiResponse(response, status)) as any
+}
+
+// Mock fetch with error
+export const mockFetchError = (error: string, status = 500) => {
+    global.fetch = vi.fn().mockRejectedValue(new Error(error)) as any
+}
+
+// Test environment setup
+export const setupTestEnvironment = () => {
+    // Mock console methods to avoid noise in tests
+    jest.spyOn(console, 'log').mockImplementation(() => { })
+    jest.spyOn(console, 'warn').mockImplementation(() => { })
+    jest.spyOn(console, 'error').mockImplementation(() => { })
+    jest.spyOn(console, 'info').mockImplementation(() => { })
+    jest.spyOn(console, 'debug').mockImplementation(() => { })
+}
+
+export const cleanupTestEnvironment = () => {
+    jest.restoreAllMocks()
+}
+
+// Custom matchers for common assertions
+export const expectElementToBeVisible = (element: HTMLElement) => {
+    expect(element).toBeInTheDocument()
+    expect(element).toBeVisible()
+}
+
+export const expectElementToHaveText = (element: HTMLElement, text: string) => {
+    expect(element).toHaveTextContent(text)
+}
+
+export const expectElementToHaveClass = (element: HTMLElement, className: string) => {
+    expect(element).toHaveClass(className)
+}
+
+// Wait for element to appear
+export const waitForElement = async (selector: string, timeout = 5000) => {
+    const startTime = Date.now()
+
+    while (Date.now() - startTime < timeout) {
+        const element = document.querySelector(selector)
+        if (element) return element
+
+        await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    throw new Error(`Element ${selector} not found within ${timeout}ms`)
+}
+
+// Mock IntersectionObserver
+export const mockIntersectionObserver = () => {
+    const mockIntersectionObserver = jest.fn()
+    mockIntersectionObserver.mockReturnValue({
+        observe: () => null,
+        unobserve: () => null,
+        disconnect: () => null,
+    })
+    window.IntersectionObserver = mockIntersectionObserver
+}
+
+// Mock ResizeObserver
+export const mockResizeObserver = () => {
+    global.ResizeObserver = jest.fn().mockImplementation(() => ({
+        observe: jest.fn(),
+        unobserve: jest.fn(),
+        disconnect: jest.fn(),
+    }))
+}
+
+// Test cleanup helper
+export const cleanupAfterEach = () => {
+    afterEach(() => {
+        jest.clearAllMocks()
+        cleanupTestEnvironment()
+    })
+}

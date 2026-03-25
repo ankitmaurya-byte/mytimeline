@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /package.json
+Disallow: /tsconfig.json
+Disallow: /*.map$
+Allow: /
+
+Sitemap: https://timeline.devcosmos.site/sitemap.xml

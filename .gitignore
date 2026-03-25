@@ -1,0 +1,59 @@
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
+.clerk
+.next 
+
+# testing
+/coverage
+
+# production
+/build
+frontend/.env
+# misc
+.DS_Store
+*.pem
+
+# ignore environment files
+**.env
+**/.env*
+**.html
+**.bat
+**.md
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*
+**/.env
+**dist/
+**/.bat
+**/.tar.gz
+**/.tar
+# next.js build output
+.next/
+out/
+*.gz
+/**/*.gz
+*.rar
+*.md
+jest.*
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# clerk configuration (can include secrets)
+/.clerk/
+
+help.txt
+**.ps1
+backend.backup.20250813_054339
+/backend.backup.20250813_054339

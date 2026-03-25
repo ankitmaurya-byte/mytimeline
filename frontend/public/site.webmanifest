@@ -1,0 +1,43 @@
+{
+  "name": "Timeline - Project Management & Collaboration",
+  "short_name": "Timeline",
+  "description": "Modern project management platform with kanban boards, team collaboration, and timeline tracking",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": [
+    "productivity",
+    "business",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "https://res.cloudinary.com/dsuafua4l/image/upload/v1758283871/timeline/frontend/public/--/frontend/public/favicon-svg/favicon.svg",
+      "sizes": "16x16",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://res.cloudinary.com/dsuafua4l/image/upload/v1758283871/timeline/frontend/public/--/frontend/public/favicon-svg/favicon.svg",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://res.cloudinary.com/dsuafua4l/image/upload/v1758283871/timeline/frontend/public/--/frontend/public/favicon-svg/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://res.cloudinary.com/dsuafua4l/image/upload/v1758264239/timeline/apple-touch-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

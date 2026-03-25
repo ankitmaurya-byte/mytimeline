@@ -1,0 +1,30 @@
+steps:
+  # Build Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      ["build", "-t", "asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/demo-app", "."]
+
+  # Push image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      ["push", "asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/demo-app"]
+
+  # Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    args:
+      [
+        "gcloud",
+        "run",
+        "deploy",
+        "demo-app",
+        "--image",
+        "asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/demo-app",
+        "--region",
+        "asia-south1",
+        "--platform",
+        "managed",
+        "--allow-unauthenticated"
+      ]
+
+images:
+  - "asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/demo-app"

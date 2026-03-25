@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+coverage/
+
+# Environment files
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# Cache
+.turbo/
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Public assets (usually don't need formatting)
+public/
+
+# Vercel
+.vercel/
+
+# Generated files
+*.tsbuildinfo
+next-env.d.ts

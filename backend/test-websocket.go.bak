@@ -1,0 +1,91 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/gorilla/websocket"
+)
+
+// JWT claims structure (same as in main.go)
+type Claims struct {
+	UserID string `json:"userId"`
+	jwt.RegisteredClaims
+}
+
+func main() {
+	// Test WebSocket connection
+	testWebSocket()
+}
+
+func testWebSocket() {
+	fmt.Println("🧪 Testing WebSocket connection...")
+
+	// Generate valid JWT token
+	token := generateTestToken()
+	fmt.Printf("🔑 Generated test token: %s\n", token)
+
+	// Connect to WebSocket server
+	dialer := websocket.Dialer{}
+	conn, _, err := dialer.Dial(fmt.Sprintf("ws://localhost:8001/ws?token=%s", token), nil)
+	if err != nil {
+		log.Printf("❌ Failed to connect: %v", err)
+		log.Println("Make sure the WebSocket server is running on port 8001")
+		return
+	}
+	defer conn.Close()
+
+	fmt.Println("✅ Connected to WebSocket server")
+
+	// Test ping
+	err = conn.WriteJSON(map[string]string{"type": "ping"})
+	if err != nil {
+		log.Printf("❌ Failed to send ping: %v", err)
+		return
+	}
+
+	fmt.Println("📤 Sent ping message")
+
+	// Read response
+	var response map[string]interface{}
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	err = conn.ReadJSON(&response)
+	if err != nil {
+		log.Printf("❌ Failed to read response: %v", err)
+		return
+	}
+
+	fmt.Printf("📥 Received response: %v\n", response)
+
+	if response["type"] == "pong" {
+		fmt.Println("✅ Ping-pong test successful!")
+	} else {
+		fmt.Println("⚠️ Unexpected response")
+	}
+
+	fmt.Println("🎉 WebSocket server is working correctly!")
+}
+
+func generateTestToken() string {
+	// Create test claims
+	claims := &Claims{
+		UserID: "test-user-123",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	// Create token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign token with the same secret used by the server
+	tokenString, err := token.SignedString([]byte("test-secret-key-for-development"))
+	if err != nil {
+		log.Fatalf("Failed to generate token: %v", err)
+	}
+
+	return tokenString
+}

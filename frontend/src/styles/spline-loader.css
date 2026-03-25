@@ -1,0 +1,46 @@
+/* Hide Spline branding and logos */
+spline-viewer::part(logo),
+spline-viewer::part(branding),
+spline-viewer::part(watermark),
+spline-viewer::part(attribution),
+spline-viewer::part(spline-logo),
+spline-viewer::part(built-with-spline) {
+  display: none !important;
+}
+
+/* Hide any elements with branding-related class names */
+spline-viewer *[class*='spline'],
+spline-viewer *[class*='built'],
+spline-viewer *[class*='logo'],
+spline-viewer *[class*='branding'],
+spline-viewer *[class*='watermark'],
+spline-viewer *[class*='attribution'] {
+  display: none !important;
+}
+
+/* Additional selectors for common Spline branding elements */
+spline-viewer [data-testid*='logo'],
+spline-viewer [data-testid*='branding'],
+spline-viewer [data-testid*='watermark'],
+spline-viewer [aria-label*='Spline'],
+spline-viewer [aria-label*='Built with'] {
+  display: none !important;
+}
+
+/* Hide any iframe or overlay elements that might contain branding */
+spline-viewer iframe[src*='spline'],
+spline-viewer .spline-overlay,
+spline-viewer .spline-branding {
+  display: none !important;
+}
+
+/* Global styles to hide Spline branding across the entire page */
+*[class*='spline-logo'],
+*[class*='built-with-spline'],
+*[class*='spline-branding'],
+*[class*='spline-watermark'],
+*[class*='spline-attribution'] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}

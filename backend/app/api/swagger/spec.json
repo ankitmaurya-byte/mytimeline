@@ -1,0 +1,4211 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Timeline API",
+        "version": "1.0.0",
+        "description": "Comprehensive REST API for Timeline project management application. Manage workspaces, projects, tasks, team members, and collaboration features.",
+        "contact": {
+            "name": "Timeline API Support",
+            "email": "api-support@timeline.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "termsOfService": "https://timeline.iamrakesh.codes/terms"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api",
+            "x-meta": {
+                "pathsCount": 46,
+                "endpointOperations": 54,
+                "models": 8,
+                "services": 14,
+                "countingRules": "Excluded: /swagger, /swagger-ui, / (root redirect). Included AI endpoints and OAuth endpoints. Counted distinct path templates as pathsCount; each HTTP method on a path counted in endpointOperations."
+            },
+            "description": "Development server"
+        },
+        {
+            "url": "https://not-known.com/v1",
+            "description": "Production server"
+        },
+        {
+            "url": "https://staging-api.timeline.com/v1",
+            "description": "Staging server"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Authentication & verification"
+        },
+        {
+            "name": "OAuth",
+            "description": "OAuth 2.0 authentication flows"
+        },
+        {
+            "name": "Users",
+            "description": "User directory and statistics endpoints"
+        },
+        {
+            "name": "Workspace",
+            "description": "Workspace management"
+        },
+        {
+            "name": "Projects",
+            "description": "Project management"
+        },
+        {
+            "name": "Tasks",
+            "description": "Task CRUD & updates"
+        },
+        {
+            "name": "Members",
+            "description": "Workspace member operations"
+        },
+        {
+            "name": "Analytics",
+            "description": "Analytics & reporting endpoints"
+        },
+        {
+            "name": "Admin",
+            "description": "Administrative operations"
+        },
+        {
+            "name": "Database",
+            "description": "Database utilities & diagnostics"
+        },
+        {
+            "name": "Seed",
+            "description": "Data seeding & initialization"
+        },
+        {
+            "name": "Health",
+            "description": "Service health & system status"
+        },
+        {
+            "name": "AI",
+            "description": "AI assisted task endpoints"
+        },
+        {
+            "name": "Insights",
+            "description": "Notes & insights endpoints"
+        },
+        {
+            "name": "Docs",
+            "description": "Documentation / Swagger helpers"
+        },
+        {
+            "name": "System",
+            "description": "Misc system endpoints (hello, root)"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT Bearer token authentication. Format: 'Bearer {token}'"
+            },
+            "cookieAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "__session",
+                "description": "Session-based authentication using HTTP-only cookies"
+            },
+            "clerkAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "Clerk.js authentication token"
+            },
+            "apiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key",
+                "description": "API key for server-to-server authentication"
+            }
+        },
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "required": [
+                    "error",
+                    "message",
+                    "statusCode"
+                ],
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "Error type identifier",
+                        "example": "VALIDATION_ERROR"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Human-readable error message",
+                        "example": "The provided data is invalid"
+                    },
+                    "statusCode": {
+                        "type": "integer",
+                        "description": "HTTP status code",
+                        "example": 400
+                    },
+                    "details": {
+                        "type": "object",
+                        "description": "Additional error details or validation errors",
+                        "additionalProperties": true,
+                        "example": {
+                            "field": "email",
+                            "code": "INVALID_FORMAT"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the error occurred",
+                        "example": "2024-01-15T10:30:00Z"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "API endpoint where error occurred",
+                        "example": "/api/user/current"
+                    },
+                    "requestId": {
+                        "type": "string",
+                        "description": "Unique request identifier for debugging",
+                        "example": "req_abc123def456"
+                    }
+                }
+            },
+            "SuccessResponse": {
+                "type": "object",
+                "required": [
+                    "success",
+                    "message"
+                ],
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Operation completed successfully"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-15T10:30:00Z"
+                    }
+                }
+            },
+            "User": {
+                "type": "object",
+                "required": [
+                    "_id",
+                    "email",
+                    "name"
+                ],
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "clerkId": {
+                        "type": "string",
+                        "description": "Clerk authentication provider ID",
+                        "example": "user_2NiWoCI2F2b2OXhOuEOdUr"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "User's full name",
+                        "example": "John Doe"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "User's email address",
+                        "example": "john.doe@example.com"
+                    },
+                    "username": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 30,
+                        "pattern": "^[a-zA-Z0-9_-]+$",
+                        "description": "Unique username",
+                        "example": "johndoe123"
+                    },
+                    "profilePicture": {
+                        "type": "string",
+                        "format": "uri",
+                        "nullable": true,
+                        "description": "URL to user's profile picture",
+                        "example": "https://example.com/avatars/john-doe.jpg"
+                    },
+                    "bio": {
+                        "type": "string",
+                        "maxLength": 500,
+                        "description": "User's biography",
+                        "example": "Software developer passionate about project management"
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "description": "User's timezone",
+                        "example": "America/New_York"
+                    },
+                    "preferences": {
+                        "type": "object",
+                        "properties": {
+                            "theme": {
+                                "type": "string",
+                                "enum": [
+                                    "light",
+                                    "dark",
+                                    "auto"
+                                ],
+                                "default": "auto"
+                            },
+                            "notifications": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "boolean",
+                                        "default": true
+                                    },
+                                    "push": {
+                                        "type": "boolean",
+                                        "default": true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "isActive": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether the user account is active"
+                    },
+                    "lastLogin": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last login timestamp",
+                        "example": "2024-01-15T10:30:00Z"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Account creation timestamp",
+                        "example": "2024-01-01T00:00:00Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp",
+                        "example": "2024-01-15T10:30:00Z"
+                    }
+                }
+            },
+            "Workspace": {
+                "type": "object",
+                "required": [
+                    "_id",
+                    "name",
+                    "owner"
+                ],
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Workspace name",
+                        "example": "Acme Corp Development Team"
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 1000,
+                        "description": "Workspace description",
+                        "example": "Main development workspace for Acme Corporation projects"
+                    },
+                    "owner": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "User ID of the workspace owner",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "inviteCode": {
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 12,
+                        "pattern": "^[A-Za-z0-9]+$",
+                        "description": "Unique invite code for joining the workspace",
+                        "example": "ABC123XYZ"
+                    },
+                    "settings": {
+                        "type": "object",
+                        "properties": {
+                            "isPublic": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Whether the workspace is publicly visible"
+                            },
+                            "allowInviteLinks": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "Whether invite links are enabled"
+                            },
+                            "defaultRole": {
+                                "type": "string",
+                                "enum": [
+                                    "member",
+                                    "viewer"
+                                ],
+                                "default": "member",
+                                "description": "Default role for new members"
+                            }
+                        }
+                    },
+                    "stats": {
+                        "type": "object",
+                        "properties": {
+                            "memberCount": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Total number of members"
+                            },
+                            "projectCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Total number of projects"
+                            },
+                            "taskCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Total number of tasks"
+                            }
+                        }
+                    },
+                    "isActive": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether the workspace is active"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Workspace creation timestamp",
+                        "example": "2024-01-01T00:00:00Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp",
+                        "example": "2024-01-15T10:30:00Z"
+                    }
+                }
+            },
+            "Project": {
+                "type": "object",
+                "required": [
+                    "_id",
+                    "name",
+                    "workspace"
+                ],
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d2"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Project name",
+                        "example": "Website Redesign"
+                    },
+                    "emoji": {
+                        "type": "string",
+                        "maxLength": 4,
+                        "description": "Project emoji icon",
+                        "example": "🚀"
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 1000,
+                        "description": "Project description",
+                        "example": "Complete redesign of the company website with modern UI/UX"
+                    },
+                    "workspace": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "ID of the workspace this project belongs to",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "owner": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "User ID of the project owner",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "planning",
+                            "active",
+                            "on_hold",
+                            "completed",
+                            "cancelled"
+                        ],
+                        "default": "planning",
+                        "description": "Current project status"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "critical"
+                        ],
+                        "default": "medium",
+                        "description": "Project priority level"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Project start date",
+                        "example": "2024-01-01"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Project end date",
+                        "example": "2024-06-30"
+                    },
+                    "budget": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "Project budget in USD",
+                        "example": 50000
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 50
+                        },
+                        "maxItems": 10,
+                        "description": "Project tags for categorization",
+                        "example": [
+                            "frontend",
+                            "design",
+                            "urgent"
+                        ]
+                    },
+                    "progress": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Project completion percentage",
+                        "example": 45
+                    },
+                    "isArchived": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Whether the project is archived"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Project creation timestamp",
+                        "example": "2024-01-01T00:00:00Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp",
+                        "example": "2024-01-15T10:30:00Z"
+                    }
+                }
+            },
+            "Task": {
+                "type": "object",
+                "required": [
+                    "_id",
+                    "title",
+                    "project",
+                    "workspace"
+                ],
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d3"
+                    },
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "description": "Task title",
+                        "example": "Implement user authentication system"
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "description": "Detailed task description",
+                        "example": "Create a secure authentication system with JWT tokens and password hashing"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "urgent"
+                        ],
+                        "default": "medium",
+                        "description": "Task priority level",
+                        "example": "high"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "todo",
+                            "in_progress",
+                            "review",
+                            "done"
+                        ],
+                        "default": "todo",
+                        "description": "Current task status",
+                        "example": "in_progress"
+                    },
+                    "assignedTo": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "User ID of the assigned team member",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "createdBy": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "User ID who created the task",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "project": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "ID of the project this task belongs to",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d2"
+                    },
+                    "workspace": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "ID of the workspace this task belongs to",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Task due date and time",
+                        "example": "2024-02-15T17:00:00Z"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Task start date and time",
+                        "example": "2024-01-15T09:00:00Z"
+                    },
+                    "estimatedHours": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000,
+                        "description": "Estimated hours to complete the task",
+                        "example": 8.5
+                    },
+                    "actualHours": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "Actual hours spent on the task",
+                        "example": 6.25
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 50
+                        },
+                        "maxItems": 10,
+                        "description": "Task tags for categorization",
+                        "example": [
+                            "backend",
+                            "authentication",
+                            "security"
+                        ]
+                    },
+                    "dependencies": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{24}$"
+                        },
+                        "description": "Array of task IDs this task depends on",
+                        "example": [
+                            "60f1b2b3c4d5e6f7a8b9c0d4"
+                        ]
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string",
+                                    "format": "uri"
+                                },
+                                "size": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "description": "Task attachments"
+                    },
+                    "comments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "_id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-fA-F]{24}$"
+                                },
+                                "author": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-fA-F]{24}$"
+                                },
+                                "content": {
+                                    "type": "string",
+                                    "maxLength": 1000
+                                },
+                                "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        },
+                        "description": "Task comments"
+                    },
+                    "isArchived": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Whether the task is archived"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Task completion timestamp",
+                        "example": "2024-01-20T15:30:00Z"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Task creation timestamp",
+                        "example": "2024-01-01T00:00:00Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp",
+                        "example": "2024-01-15T10:30:00Z"
+                    }
+                }
+            },
+            "Role": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId of the role"
+                    },
+                    "name": {
+                        "type": "string",
+                        "enum": [
+                            "owner",
+                            "admin",
+                            "member",
+                            "viewer",
+                            "guest"
+                        ],
+                        "description": "Role name with predefined permissions"
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "CREATE_PROJECT",
+                                "DELETE_PROJECT",
+                                "UPDATE_PROJECT",
+                                "CREATE_TASK",
+                                "DELETE_TASK",
+                                "UPDATE_TASK",
+                                "MANAGE_MEMBERS",
+                                "DELETE_WORKSPACE",
+                                "UPDATE_WORKSPACE"
+                            ]
+                        },
+                        "description": "Array of permissions granted to this role"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Human-readable description of the role"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "Member": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId of the member"
+                    },
+                    "userId": {
+                        "$ref": "#/components/schemas/User"
+                    },
+                    "workspaceId": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "ID of the workspace this member belongs to"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/Role"
+                    },
+                    "joinedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the member joined the workspace"
+                    },
+                    "invitedBy": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "ID of the user who invited this member"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "inactive",
+                            "pending"
+                        ],
+                        "description": "Current status of the member"
+                    }
+                }
+            },
+            "Pagination": {
+                "type": "object",
+                "required": [
+                    "page",
+                    "limit",
+                    "total",
+                    "pages"
+                ],
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Current page number",
+                        "example": 1
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "description": "Number of items per page",
+                        "example": 20
+                    },
+                    "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Total number of items",
+                        "example": 150
+                    },
+                    "pages": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Total number of pages",
+                        "example": 8
+                    },
+                    "hasNext": {
+                        "type": "boolean",
+                        "description": "Whether there is a next page",
+                        "example": true
+                    },
+                    "hasPrev": {
+                        "type": "boolean",
+                        "description": "Whether there is a previous page",
+                        "example": false
+                    }
+                }
+            },
+            "Analytics": {
+                "type": "object",
+                "properties": {
+                    "totalTasks": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Total number of tasks",
+                        "example": 45
+                    },
+                    "completedTasks": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of completed tasks",
+                        "example": 23
+                    },
+                    "overdueTasks": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of overdue tasks",
+                        "example": 3
+                    },
+                    "inProgressTasks": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of tasks in progress",
+                        "example": 12
+                    },
+                    "progress": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Overall completion percentage",
+                        "example": 67.5
+                    },
+                    "productivity": {
+                        "type": "object",
+                        "properties": {
+                            "tasksCompletedThisWeek": {
+                                "type": "integer",
+                                "example": 8
+                            },
+                            "tasksCompletedLastWeek": {
+                                "type": "integer",
+                                "example": 6
+                            },
+                            "averageCompletionTime": {
+                                "type": "number",
+                                "description": "Average task completion time in hours",
+                                "example": 4.5
+                            }
+                        }
+                    },
+                    "timeframe": {
+                        "type": "object",
+                        "properties": {
+                            "startDate": {
+                                "type": "string",
+                                "format": "date",
+                                "example": "2024-01-01"
+                            },
+                            "endDate": {
+                                "type": "string",
+                                "format": "date",
+                                "example": "2024-01-31"
+                            }
+                        }
+                    }
+                }
+            },
+            "Note": {
+                "type": "object",
+                "required": [
+                    "_id",
+                    "title",
+                    "content",
+                    "workspaceId"
+                ],
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "Unique MongoDB ObjectId",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d5"
+                    },
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "description": "Note title",
+                        "example": "Project Planning Notes"
+                    },
+                    "content": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 10000,
+                        "description": "Note content in markdown format",
+                        "example": "# Meeting Notes\\n\\n- Discussed project timeline\\n- Assigned tasks to team members"
+                    },
+                    "workspaceId": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "ID of the workspace this note belongs to",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "authorId": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "description": "User ID of the note author",
+                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "maxLength": 50
+                        },
+                        "maxItems": 10,
+                        "description": "Note tags for categorization",
+                        "example": [
+                            "meeting",
+                            "planning",
+                            "important"
+                        ]
+                    },
+                    "isPublic": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Whether the note is visible to all workspace members"
+                    },
+                    "isPinned": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Whether the note is pinned"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Note creation timestamp",
+                        "example": "2024-01-01T00:00:00Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp",
+                        "example": "2024-01-15T10:30:00Z"
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/user/current": {
+            "get": {
+                "summary": "Get current user",
+                "tags": [
+                    "Auth",
+                    "Users"
+                ],
+                "description": "Retrieves the current authenticated user with full details",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/user/update": {
+            "put": {
+                "summary": "Update current user",
+                "tags": [
+                    "Users"
+                ],
+                "description": "Updates the current user's profile information",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/create/new": {
+            "post": {
+                "summary": "Create new workspace",
+                "tags": [
+                    "Workspace"
+                ],
+                "description": "Creates a new workspace for the authenticated user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Workspace created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "workspace": {
+                                            "$ref": "#/components/schemas/Workspace"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/all": {
+            "get": {
+                "summary": "List workspaces for current user",
+                "tags": [
+                    "Workspace"
+                ],
+                "description": "Retrieves all workspaces where the current user is a member",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workspaces retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "workspaces": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Workspace"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/{id}": {
+            "get": {
+                "summary": "Get workspace by id",
+                "tags": [
+                    "Workspace"
+                ],
+                "description": "Retrieves a specific workspace by ID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workspace retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "workspace": {
+                                            "$ref": "#/components/schemas/Workspace"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/update/{id}": {
+            "put": {
+                "summary": "Update workspace",
+                "tags": [
+                    "Workspace"
+                ],
+                "description": "Updates a workspace's information",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Workspace updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "workspace": {
+                                            "$ref": "#/components/schemas/Workspace"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/delete/{id}": {
+            "delete": {
+                "summary": "Delete workspace",
+                "tags": [
+                    "Workspace"
+                ],
+                "description": "Deletes a workspace (requires DELETE_WORKSPACE permission)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workspace deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "currentWorkspace": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/members/{id}": {
+            "get": {
+                "summary": "Get workspace members",
+                "tags": [
+                    "Workspace",
+                    "Members"
+                ],
+                "description": "Retrieves all members of a specific workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Members retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "members": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "userId": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "_id": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "email": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "role": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "_id": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/project/workspace/{workspaceId}/all": {
+            "get": {
+                "summary": "List projects in workspace",
+                "tags": [
+                    "Projects"
+                ],
+                "description": "Retrieves all projects in a specific workspace with pagination",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "pageSize",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "pageNumber",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Projects retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "projects": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Project"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pageNumber": {
+                                                    "type": "integer"
+                                                },
+                                                "pageSize": {
+                                                    "type": "integer"
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer"
+                                                },
+                                                "totalCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/project/workspace/{workspaceId}/create": {
+            "post": {
+                "summary": "Create new project",
+                "tags": [
+                    "Projects"
+                ],
+                "description": "Creates a new project in a specific workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "emoji": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Project created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "project": {
+                                            "$ref": "#/components/schemas/Project"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/project/{id}/workspace/{workspaceId}": {
+            "get": {
+                "summary": "Get project by ID",
+                "tags": [
+                    "Projects"
+                ],
+                "description": "Retrieves a specific project by ID within a workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "project": {
+                                            "$ref": "#/components/schemas/Project"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update project",
+                "tags": [
+                    "Projects"
+                ],
+                "description": "Updates a specific project's information",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "emoji": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Project updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "project": {
+                                            "$ref": "#/components/schemas/Project"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete project",
+                "tags": [
+                    "Projects"
+                ],
+                "description": "Deletes a specific project from a workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/project/{id}/workspace/{workspaceId}/analytics": {
+            "get": {
+                "summary": "Get project analytics",
+                "tags": [
+                    "Projects",
+                    "Analytics"
+                ],
+                "description": "Retrieves analytics data for a specific project",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project analytics retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "analytics": {
+                                            "type": "object",
+                                            "properties": {
+                                                "totalTasks": {
+                                                    "type": "integer"
+                                                },
+                                                "completedTasks": {
+                                                    "type": "integer"
+                                                },
+                                                "progress": {
+                                                    "type": "number"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/task/workspace/{workspaceId}/all": {
+            "get": {
+                "summary": "List tasks in workspace",
+                "tags": [
+                    "Tasks"
+                ],
+                "description": "Retrieves all tasks in a specific workspace with pagination",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "pageSize",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "pageNumber",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tasks retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "tasks": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Task"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pageNumber": {
+                                                    "type": "integer"
+                                                },
+                                                "pageSize": {
+                                                    "type": "integer"
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer"
+                                                },
+                                                "totalCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/task/project/{projectId}/workspace/{workspaceId}": {
+            "post": {
+                "summary": "Create new task",
+                "tags": [
+                    "Tasks"
+                ],
+                "description": "Creates a new task in a specific project within a workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "projectId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "title"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "priority": {
+                                        "type": "string",
+                                        "enum": [
+                                            "low",
+                                            "medium",
+                                            "high",
+                                            "urgent"
+                                        ]
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "todo",
+                                            "in_progress",
+                                            "review",
+                                            "done"
+                                        ]
+                                    },
+                                    "assignedTo": {
+                                        "type": "string"
+                                    },
+                                    "dueDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Task created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "task": {
+                                            "$ref": "#/components/schemas/Task"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/task/{taskId}/project/{projectId}/workspace/{workspaceId}": {
+            "get": {
+                "summary": "Get task by ID",
+                "tags": [
+                    "Tasks"
+                ],
+                "description": "Retrieves a specific task by ID within a project and workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "taskId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "projectId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "task": {
+                                            "$ref": "#/components/schemas/Task"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete task",
+                "tags": [
+                    "Tasks"
+                ],
+                "description": "Deletes a specific task from a project",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "taskId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "projectId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/task/{taskId}/project/{projectId}/workspace/{workspaceId}/update": {
+            "put": {
+                "summary": "Update task",
+                "tags": [
+                    "Tasks"
+                ],
+                "description": "Updates a specific task's information",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "taskId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "projectId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "priority": {
+                                        "type": "string",
+                                        "enum": [
+                                            "low",
+                                            "medium",
+                                            "high",
+                                            "urgent"
+                                        ]
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "todo",
+                                            "in_progress",
+                                            "review",
+                                            "done"
+                                        ]
+                                    },
+                                    "assignedTo": {
+                                        "type": "string"
+                                    },
+                                    "dueDate": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Task updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "task": {
+                                            "$ref": "#/components/schemas/Task"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/analytics/{workspaceId}": {
+            "get": {
+                "summary": "Workspace analytics",
+                "tags": [
+                    "Workspace",
+                    "Analytics"
+                ],
+                "description": "Retrieves analytics data for a specific workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Analytics retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "analytics": {
+                                            "type": "object",
+                                            "properties": {
+                                                "totalTasks": {
+                                                    "type": "integer"
+                                                },
+                                                "overdueTasks": {
+                                                    "type": "integer"
+                                                },
+                                                "completedTasks": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/member/workspace/{inviteCode}/join": {
+            "post": {
+                "summary": "Join workspace by invite code",
+                "tags": [
+                    "Members",
+                    "Workspace"
+                ],
+                "description": "Joins a workspace using an invite code",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "inviteCode",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully joined workspace",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "workspaceId": {
+                                            "type": "string"
+                                        },
+                                        "role": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid invite code",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/insights/workspace/{workspaceId}/notes": {
+            "get": {
+                "summary": "List insights notes",
+                "tags": [
+                    "Insights"
+                ],
+                "description": "List all insight notes for a workspace",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notes returned"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create insights note",
+                "tags": [
+                    "Insights"
+                ],
+                "description": "Create a new insight note in workspace",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "text",
+                                    "author"
+                                ],
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "author": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Note created"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/insights/workspace/{workspaceId}/notes/{noteId}": {
+            "get": {
+                "summary": "Get insights note",
+                "tags": [
+                    "Insights"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "noteId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Note returned"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update insights note",
+                "tags": [
+                    "Insights"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "noteId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "text",
+                                    "author"
+                                ],
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "author": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Note updated"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete insights note",
+                "tags": [
+                    "Insights"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "noteId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Note deleted"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "summary": "Logout current user",
+                "tags": [
+                    "Auth"
+                ],
+                "description": "Logs out the current authenticated user and invalidates their session",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User logged out successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/workspace/change/member/role/{id}": {
+            "put": {
+                "summary": "Change member role in workspace",
+                "tags": [
+                    "Members",
+                    "Workspace"
+                ],
+                "description": "Updates the role of a specific member in a workspace",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    },
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{24}$",
+                            "minLength": 24,
+                            "maxLength": 24
+                        },
+                        "description": "The unique MongoDB ObjectId of the workspace member whose role is being changed",
+                        "example": "686a5d4a521ff733f5515910"
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspaceId",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{24}$"
+                        },
+                        "description": "Optional workspace ID for additional validation",
+                        "example": "6883fc0a933c7ea8cec24049"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "roleId"
+                                ],
+                                "properties": {
+                                    "roleId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-fA-F]{24}$",
+                                        "description": "The MongoDB ObjectId of the new role to assign to the member",
+                                        "example": "60f1b2b3c4d5e6f7a8b9c0d1"
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "description": "Optional reason for the role change (for audit logs)",
+                                        "example": "Promoted due to excellent performance"
+                                    },
+                                    "notifyMember": {
+                                        "type": "boolean",
+                                        "default": true,
+                                        "description": "Whether to notify the member about the role change via email",
+                                        "example": true
+                                    }
+                                },
+                                "example": {
+                                    "roleId": "60f1b2b3c4d5e6f7a8b9c0d1",
+                                    "reason": "Promoted to team lead",
+                                    "notifyMember": true
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Member role updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "member": {
+                                            "type": "object",
+                                            "properties": {
+                                                "_id": {
+                                                    "type": "string"
+                                                },
+                                                "userId": {
+                                                    "type": "object"
+                                                },
+                                                "role": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/hello": {
+            "get": {
+                "summary": "Hello world",
+                "description": "Simple test endpoint to verify API is working",
+                "tags": [
+                    "System"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Hello message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "summary": "List users",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 200,
+                            "default": 50
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sort",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "createdAt",
+                                "-createdAt",
+                                "name",
+                                "-name",
+                                "lastLogin",
+                                "-lastLogin"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "verified",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "true",
+                                "false"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "admin",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "true",
+                                "false"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "users": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/User"
+                                            }
+                                        },
+                                        "page": {
+                                            "type": "integer"
+                                        },
+                                        "totalPages": {
+                                            "type": "integer"
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        },
+                                        "limit": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
+        "/users/stats": {
+            "get": {
+                "summary": "User statistics",
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User statistics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "totalUsers": {
+                                            "type": "integer"
+                                        },
+                                        "activeUsers": {
+                                            "type": "integer"
+                                        },
+                                        "newUsersToday": {
+                                            "type": "integer"
+                                        },
+                                        "premiumUsers": {
+                                            "type": "integer"
+                                        },
+                                        "usersByRole": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "recentActivity": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "email": {
+                                                        "type": "string"
+                                                    },
+                                                    "lastLoginAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updatedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "role": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "availableFields": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "lastUpdated": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
+        "/users/count": {
+            "get": {
+                "summary": "Basic user counts",
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Counts fetched"
+                    },
+                    "503": {
+                        "description": "Service unavailable"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Service health status",
+                "description": "Comprehensive health check including database & system metrics",
+                "tags": [
+                    "Health"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Healthy / Degraded status with metrics"
+                    },
+                    "503": {
+                        "description": "Service unhealthy"
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "summary": "Login user",
+                "tags": [
+                    "Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful (cookie set)"
+                    },
+                    "400": {
+                        "description": "Missing credentials"
+                    },
+                    "401": {
+                        "description": "Invalid or unverified"
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "summary": "Register new user",
+                "tags": [
+                    "Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registered - verification pending"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/auth/verify-email": {
+            "get": {
+                "summary": "Verify email token",
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "token",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "email",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email verified"
+                    },
+                    "400": {
+                        "description": "Invalid / expired"
+                    }
+                }
+            }
+        },
+        "/auth/resend-verification": {
+            "post": {
+                "summary": "Resend email verification",
+                "tags": [
+                    "Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Verification email sent (idempotent)"
+                    },
+                    "400": {
+                        "description": "Missing email"
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "summary": "Get current authenticated user (auth/me)",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User returned"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/auth/oauth/google/init": {
+            "get": {
+                "summary": "Initialize Google OAuth flow",
+                "description": "Generates Google OAuth authorization URL and redirects user to Google for authentication",
+                "tags": [
+                    "Auth",
+                    "OAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OAuth URL generated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string",
+                                            "format": "uri",
+                                            "description": "Google OAuth authorization URL"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Google OAuth authorization URL generated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "OAuth not configured",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/auth/oauth/google/callback": {
+            "get": {
+                "summary": "Google OAuth callback",
+                "description": "Handles Google OAuth callback, exchanges authorization code for tokens, and creates/logs in user",
+                "tags": [
+                    "Auth",
+                    "OAuth"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Authorization code from Google"
+                    },
+                    {
+                        "in": "query",
+                        "name": "state",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "State parameter for CSRF protection"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to frontend with authentication complete",
+                        "headers": {
+                            "Location": {
+                                "description": "Redirect URL to frontend workspace",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Set-Cookie": {
+                                "description": "Authentication cookie set",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "OAuth authorization failed or no code received",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "OAuth callback failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/auth/oauth/github/init": {
+            "get": {
+                "summary": "Initialize GitHub OAuth flow",
+                "description": "Generates GitHub OAuth authorization URL and redirects user to GitHub for authentication",
+                "tags": [
+                    "Auth",
+                    "OAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OAuth URL generated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string",
+                                            "format": "uri",
+                                            "description": "GitHub OAuth authorization URL"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "GitHub OAuth authorization URL generated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "OAuth not configured",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/auth/oauth/github/callback": {
+            "get": {
+                "summary": "GitHub OAuth callback",
+                "description": "Handles GitHub OAuth callback, exchanges authorization code for tokens, and creates/logs in user",
+                "tags": [
+                    "Auth",
+                    "OAuth"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Authorization code from GitHub"
+                    },
+                    {
+                        "in": "query",
+                        "name": "state",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "State parameter for CSRF protection"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to frontend with authentication complete",
+                        "headers": {
+                            "Location": {
+                                "description": "Redirect URL to frontend workspace",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Set-Cookie": {
+                                "description": "Authentication cookie set",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "OAuth authorization failed or no code received",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "OAuth callback failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/auth/oauth/test": {
+            "get": {
+                "summary": "Test OAuth configuration",
+                "description": "Returns the status of OAuth provider configurations for debugging purposes",
+                "tags": [
+                    "Auth",
+                    "OAuth",
+                    "System"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OAuth configuration status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OAuth endpoints are working"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "example": "ok"
+                                        },
+                                        "configured": {
+                                            "type": "object",
+                                            "properties": {
+                                                "google": {
+                                                    "type": "boolean",
+                                                    "description": "Whether Google OAuth is configured"
+                                                },
+                                                "github": {
+                                                    "type": "boolean",
+                                                    "description": "Whether GitHub OAuth is configured"
+                                                }
+                                            }
+                                        },
+                                        "endpoints": {
+                                            "type": "object",
+                                            "properties": {
+                                                "google": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "init": {
+                                                            "type": "string",
+                                                            "example": "/api/auth/oauth/google/init"
+                                                        },
+                                                        "callback": {
+                                                            "type": "string",
+                                                            "example": "/api/auth/oauth/google/callback"
+                                                        }
+                                                    }
+                                                },
+                                                "github": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "init": {
+                                                            "type": "string",
+                                                            "example": "/api/auth/oauth/github/init"
+                                                        },
+                                                        "callback": {
+                                                            "type": "string",
+                                                            "example": "/api/auth/oauth/github/callback"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "instructions": {
+                                            "type": "string",
+                                            "example": "Set GOOGLE_CLIENT_ID and GITHUB_CLIENT_ID environment variables to enable OAuth"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "summary": "CORS preflight",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                }
+            }
+        },
+        "/admin/dashboard": {
+            "get": {
+                "summary": "Admin dashboard metrics",
+                "tags": [
+                    "Admin",
+                    "Analytics"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Metrics returned"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "summary": "Admin list users (elevated)",
+                "tags": [
+                    "Admin",
+                    "Users"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users returned"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
+        "/admin/testmail": {
+            "post": {
+                "summary": "Send test email",
+                "tags": [
+                    "Admin"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sent"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
+        "/database/stats": {
+            "get": {
+                "summary": "Database statistics",
+                "tags": [
+                    "Database"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stats returned"
+                    },
+                    "503": {
+                        "description": "Database unavailable"
+                    }
+                }
+            }
+        },
+        "/database/backup": {
+            "post": {
+                "summary": "Trigger database backup",
+                "tags": [
+                    "Database"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Backup started"
+                    },
+                    "503": {
+                        "description": "Failed / disabled"
+                    }
+                }
+            }
+        },
+        "/seed/roles": {
+            "post": {
+                "summary": "Seed roles",
+                "tags": [
+                    "Seed"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Roles seeded"
+                    }
+                }
+            }
+        },
+        "/seed/default-project": {
+            "post": {
+                "summary": "Seed default project",
+                "tags": [
+                    "Seed"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project seeded"
+                    }
+                }
+            }
+        },
+        "/project/stats": {
+            "get": {
+                "summary": "Aggregate project statistics",
+                "tags": [
+                    "Projects",
+                    "Analytics"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stats returned"
+                    }
+                }
+            }
+        },
+        "/ai/status": {
+            "get": {
+                "summary": "AI provider status",
+                "tags": [
+                    "AI",
+                    "System"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status returned"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    }
+                }
+            }
+        },
+        "/ai/tasks/workspace/{workspaceId}": {
+            "post": {
+                "summary": "AI task query",
+                "tags": [
+                    "AI",
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workspaceId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "query"
+                                ],
+                                "properties": {
+                                    "query": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Query processed"
+                    },
+                    "400": {
+                        "description": "Missing query"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "429": {
+                        "description": "Rate limited"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    }
+                }
+            }
+        }
+    }
+}
