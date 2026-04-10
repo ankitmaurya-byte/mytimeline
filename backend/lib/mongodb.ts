@@ -50,23 +50,75 @@ async function connectToDatabase(): Promise<mongoose.Connection> {
         }
 
         // Connection options for better performance
+
         const options: mongoose.ConnectOptions = {
-            maxPoolSize: 10,
+            // -------------------------------
+            // 🧵 Connection Pooling
+            // -------------------------------
+            maxPoolSize: 20,
+            // Maximum number of connections in the pool
+            // Increase for high traffic apps (e.g., 50–100 in large systems)
+
             minPoolSize: 5,
+            // Keeps minimum connections ready (reduces latency spikes)
+
+            // -------------------------------
+            // ⏱️ Connection Lifecycle
+            // -------------------------------
             maxIdleTimeMS: 30000,
-            bufferCommands: true, // Enable buffering to prevent "before initial connection" errors
+            // Close connections idle for >30s (frees unused resources)
+
+            connectTimeoutMS: 10000,
+            // Fail if initial connection takes more than 10s
+
+            socketTimeoutMS: 45000,
+            // Kill queries taking more than 45s (prevents hanging requests)
+
+            serverSelectionTimeoutMS: 5000,
+            // Max time to find a MongoDB server before throwing error
+
+            // -------------------------------
+            // 📦 Query Buffering
+            // -------------------------------
+            bufferCommands: false,
+            // ❗ Recommended OFF in production
+            // Prevents silent queuing of queries before DB connects
+            // Helps catch connection issues early
+
+            // -------------------------------
+            // ✍️ Write Concern (Durability vs Speed)
+            // -------------------------------
             writeConcern: {
                 w: 1,
-                j: false,
+                // Acknowledge write from primary node only (fast)
+
+                j: true,
+                // Wait for write to be committed to journal (safer)
             },
+
+            // -------------------------------
+            // 📖 Read Preference
+            // -------------------------------
             readPreference: 'primary',
-            serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
-            connectTimeoutMS: 10000,
+            // Always read from primary (strong consistency)
+            // Use 'secondary' for read-heavy apps with replicas
+
+            // -------------------------------
+            // 🔁 Retry Logic
+            // -------------------------------
             retryWrites: true,
+            // Automatically retry failed writes (network issues)
+
             retryReads: true,
+            // Automatically retry failed reads
+
+            // -------------------------------
+            // 🧪 Debug / Monitoring
+            // -------------------------------
             monitorCommands: process.env.NODE_ENV === 'development',
+            // Logs all MongoDB commands in development mode only
         };
+
 
         // Connect to MongoDB
         console.log('🔌 Attempting to connect to MongoDB...');

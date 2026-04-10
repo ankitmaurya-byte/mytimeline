@@ -7,47 +7,63 @@ import { RolePermissions } from "../utils/role-permission";
 const seedRoles = async () => {
   console.log("Seeding roles started...");
 
+  let session: mongoose.ClientSession | null = null;
+
   try {
+    // 1. Connect DB
     await connectDatabase();
 
-    const session = await mongoose.startSession();
+    // 2. Start session
+    session = await mongoose.startSession();
     session.startTransaction();
 
-    console.log("Clearing existing roles...");
-    await RoleModel.deleteMany({}, { session });
-
+    // 3. Upsert roles (no deleteMany)
     for (const roleName in RolePermissions) {
       const role = roleName as keyof typeof RolePermissions;
       const permissions = RolePermissions[role];
 
-      // Check if the role already exists
-      const existingRole = await RoleModel.findOne({ name: role }).session(
-        session
+      await RoleModel.updateOne(
+        { name: role },
+        {
+          $set: {
+            name: role,
+            permissions: permissions,
+          },
+        },
+        {
+          upsert: true,   // create if not exists
+          session,
+        }
       );
-      if (!existingRole) {
-        const newRole = new RoleModel({
-          name: role,
-          permissions: permissions,
-        });
-        await newRole.save({ session });
-        console.log(`Role ${role} added with permissions.`);
-      } else {
-        console.log(`Role ${role} already exists.`);
-      }
+
+      console.log(`Role ${role} upserted.`);
     }
 
+    // 4. Commit transaction
     await session.commitTransaction();
     console.log("Transaction committed.");
-
-    session.endSession();
-    console.log("Session ended.");
-
-    console.log("Seeding completed successfully.");
   } catch (error) {
     console.error("Error during seeding:", error);
+
+    // 5. Rollback if error
+    if (session) {
+      await session.abortTransaction();
+      console.log("Transaction aborted.");
+    }
+  } finally {
+    // 6. End session
+    if (session) {
+      session.endSession();
+      console.log("Session ended.");
+    }
+
+    console.log("Seeding completed.");
+    process.exit(0);
   }
 };
 
-seedRoles().catch((error) =>
-  console.error("Error running seed script:", error)
-);
+// Run script
+seedRoles().catch((error) => {
+  console.error("Fatal error running seed script:", error);
+  process.exit(1);
+});

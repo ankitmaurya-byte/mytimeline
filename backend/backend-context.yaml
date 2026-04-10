@@ -32,7 +32,7 @@ entry_point:
     WebSocket upgrade on /ws → http-proxy → Go binary on WS_PORT.
   key_functions:
     - "app.prepare(): initialises Next.js"
-    - "server.on('upgrade'): proxies /ws WebSocket to Go"
+    - "serve r.on('upgrade'): proxies /ws WebSocket to Go"
     - "proxy.on('error'): gracefully closes broken WS sockets"
 
 api_lib:

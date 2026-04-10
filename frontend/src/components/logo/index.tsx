@@ -22,7 +22,7 @@ const Logo = (props: LogoProps) => {
     : "";
   const darkLogoSrc = cloudName
     ? `https://res.cloudinary.com/${cloudName}/image/upload/w_200,h_200,c_limit,q_auto:good,f_auto,dpr_auto/Timeline/darkThemeLogo.png`
-    : "";
+    : undefined;
 
   const logoContent = imgSrc ? (
     <img
