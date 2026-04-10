@@ -179,43 +179,42 @@ export function clearAuthCookie(requestOrigin?: string) {
   const sameSite = useSecure ? 'None' : 'Lax';
   const securePart = useSecure ? 'Secure; ' : '';
 
-  // For cross-domain setup (mytimeline.in -> api.timelline.tech)
-  // We need to use a shared domain or no domain restriction
-  let domain = '';
-
-  if (process.env.NODE_ENV === 'production') {
-    // For production cross-domain setup, use the root domain that both subdomains share
-    // mytimeline.in and api.timelline.tech share the root domain .timelline.tech
-    if (requestOrigin && requestOrigin.includes('mytimeline.in')) {
-      // Frontend is on mytimeline.in, clear cookie for .timelline.tech domain
-      domain = 'Domain=.timelline.tech; ';
-    } else if (requestOrigin && requestOrigin.includes('timelline.tech')) {
-      // Backend is on api.timelline.tech, clear cookie for .timelline.tech domain
-      domain = 'Domain=.timelline.tech; ';
-    } else {
-      // Fallback to configured domain or no domain restriction
-      const cookieDomain = config.getCookieDomains();
-      if (cookieDomain) {
-        domain = `Domain=${cookieDomain}; `;
-      }
-    }
-  } else {
-    // Development: use localhost domain
-    if (requestOrigin) {
-      try {
-        const url = new URL(requestOrigin);
-        if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
-          domain = `Domain=${url.hostname}; `;
-        } else {
-          domain = 'Domain=localhost; ';
-        }
-      } catch (e) {
-        domain = 'Domain=localhost; ';
-      }
-    } else {
-      domain = 'Domain=localhost; ';
-    }
-  }
+  let domain = _resolveCookieDomain(requestOrigin);
 
   return `auth_token=; Path=/; ${domain}Max-Age=0; SameSite=${sameSite}; ${securePart}`;
+}
+
+export function clearJsAuthCookie(requestOrigin?: string) {
+  const origin = process.env.FRONTEND_ORIGIN || '';
+  const useSecure = /^https:/i.test(origin) || process.env.NODE_ENV === 'production';
+  const sameSite = useSecure ? 'None' : 'Lax';
+  const securePart = useSecure ? 'Secure; ' : '';
+
+  let domain = _resolveCookieDomain(requestOrigin);
+
+  return `auth_token_js=; Path=/; ${domain}Max-Age=0; SameSite=${sameSite}; ${securePart}`;
+}
+
+function _resolveCookieDomain(requestOrigin?: string): string {
+  if (process.env.NODE_ENV === 'production') {
+    const configured = config.getCookieDomains();
+    if (configured) return `Domain=${configured}; `;
+    if (requestOrigin && (requestOrigin.includes('mytimeline.in') || requestOrigin.includes('timelline.tech'))) {
+      return 'Domain=.timelline.tech; ';
+    }
+    return '';
+  }
+
+  if (requestOrigin) {
+    try {
+      const url = new URL(requestOrigin);
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+        return 'Domain=localhost; ';
+      }
+      return `Domain=${url.hostname}; `;
+    } catch {
+      return 'Domain=localhost; ';
+    }
+  }
+  return 'Domain=localhost; ';
 }
